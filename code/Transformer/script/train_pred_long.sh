@@ -2,13 +2,13 @@ SCRIPT_PATH=$(dirname "$(realpath -s "$0")")
 cd "$SCRIPT_PATH" || exit
 
 cd ..
-python main.py \
-      --project_name transformer_CSI_predLong \
+python3 main.py \
+      --project_name transformer_N100_predLong \
       --exp_type pred \
-      --data_name CSI \
+      --data_name N100 \
       --data_type stock \
       --root_path ../../data/ \
-      --full_stock_path CSI/ \
+      --full_stock_path N100/ \
       --seq_len 60 \
       --label_len 1 \
       --pred_len 1 \
@@ -30,5 +30,5 @@ python main.py \
       --batch_size 32 \
       --learning_rate 0.0001 \
       --adjust_interval 10 \
-      --num_workers 10 \
+      --num_workers 6 \
       --devices 0 \

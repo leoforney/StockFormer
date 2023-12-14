@@ -169,10 +169,7 @@ class SAC(OffPolicyAlgorithm):
         if transformer_path is not None:
             state_dict = th.load(transformer_path, map_location=transformer_device)
             new_state_dict = OrderedDict()
-            for k, v in state_dict.items(): 
-                name = k[7:] 
-                new_state_dict[name] = v
-            self.state_transformer.load_state_dict(new_state_dict)
+            self.state_transformer.load_state_dict(state_dict, strict=False)
             print("Successfully load pretrained model...", transformer_path)
         else:
             print("Successfully initialize transformer model...")

@@ -146,9 +146,7 @@ class FeatureEngineer:
                     ].to_list()
                     for s in range(1,3):
                         temp_indicator[indicator+'_'+str(s)] = temp_indicator[indicator].shift(s)
-                    indicator_df = indicator_df.append(
-                        temp_indicator, ignore_index=True
-                    )
+                    indicator_df = pd.concat([indicator_df, temp_indicator], ignore_index=True)
                 except Exception as e:
                     print(e)
             df = df.merge(
@@ -182,9 +180,7 @@ class FeatureEngineer:
                     temp_indicator["date"] = df[df.tic == unique_ticker[i]][
                         "date"
                     ].to_list()
-                    indicator_df = indicator_df.append(
-                        temp_indicator, ignore_index=True
-                    )
+                    indicator_df = pd.concat([indicator_df, temp_indicator], ignore_index=True)
                 except Exception as e:
                     print(e)
             df = df.merge(

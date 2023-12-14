@@ -25,13 +25,13 @@ import os
 import sys
 
 fix_seed = 1999
-version = 'CSI/'
+version = 'N100/'
 model_name='StockFormer/'
-short_prediction_model_path = 'Transformer/pretrained/csi/Short/checkpoint.pth' 
-long_prediction_model_path =  'Transformer/pretrained/csi/Long/checkpoint.pth'
-mae_model_path = 'Transformer/pretrained/csi/mae/checkpoint.pth' 
-full_stock_dir = '../data/CSI/'
-ticker_list = config.use_ticker_dict['CSI']
+short_prediction_model_path = 'Transformer/pretrained/n100/Short/checkpoint.pth'
+long_prediction_model_path =  'Transformer/pretrained/n100/Long/checkpoint.pth'
+mae_model_path = 'Transformer/pretrained/n100/mae/checkpoint.pth'
+full_stock_dir = '../data/N100/'
+ticker_list = config.use_ticker_dict['N100']
 prediction_len = [1,5]
 
 
@@ -62,6 +62,47 @@ fe = FeatureEngineer(
                     tech_indicator_list=config.TECHNICAL_INDICATORS_LIST,
                     use_turbulence=False,
                     user_defined_feature = False)
+
+print("ensuring data is correct size...")
+# Count the number of unique stock tickers for each date
+unique_stocks_per_date = df.groupby('date')['tic'].nunique()
+
+# Filter out dates with incomplete data (less than 88 unique tickers)
+complete_dates = unique_stocks_per_date[unique_stocks_per_date == 88].index
+
+# Filter the dataframe to keep only data for complete dates
+df = df[df['date'].isin(complete_dates)]
+
+# Define the dates to avoid removing
+dates_no_remove = ['20110419', '20181228', '20180102', '20201231',  '20190402', '20211231', '20110117', '20180801', '20180508', '20201231',  '20210104', '20220426']
+
+# Define target number of rows
+target_rows = 263560
+
+# Check if the dataframe already has the desired length
+if len(df) > target_rows:
+    # Get unique dates
+    unique_dates = df['date'].unique()
+
+    # Initialize removed dates and remaining rows
+    removed_dates = set()
+    remaining_rows = len(df)
+
+    # Remove dates until target rows are reached
+    while remaining_rows > target_rows:
+        # Choose a random date
+        date_to_remove = random.choice(unique_dates)
+
+        # Check if it's a date to avoid or already removed
+        if date_to_remove in dates_no_remove or date_to_remove in removed_dates:
+            continue
+
+        # Remove the date and update counters
+        removed_dates.add(date_to_remove)
+        remaining_rows -= df[df['date'] == date_to_remove].shape[0]
+
+    # Filter the dataframe to remove chosen dates
+    df = df[~df['date'].isin(removed_dates)]
 
 print("generate technical indicator...")
 df = fe.preprocess_data(df)

@@ -1,3 +1,5 @@
+import os
+
 TRAINED_MODEL_DIR = "trained_models"
 TENSORBOARD_LOG_DIR = "tensorboard_log"
 RESULTS_DIR = "results"
@@ -157,13 +159,14 @@ USE_CSI_300_TICKET = ['600519.SS',
  '002050.SZ',
  '002179.SZ']
 
+USE_N100_TICKET = os.listdir('/opt/project/data/N100')
+USE_N100_TICKET = [file.replace('.csv', '') for file in USE_N100_TICKET]
 
-
-use_ticker_dict = {'CSI':USE_CSI_300_TICKET, 'TEST': USE_CSI_300_TICKET[:5]}
+use_ticker_dict = {'CSI':USE_CSI_300_TICKET, 'N100': USE_N100_TICKET, 'TEST': USE_CSI_300_TICKET[:5]}
 
 CSI_date = ['20110117', '20180801', '20180508', '20201231',  '20210104', '20220426']
 
-date_dict = {'CSI': CSI_date, 'TEST': CSI_date}
+date_dict = {'CSI': CSI_date, 'N100': CSI_date, 'TEST': CSI_date}
 
 
 time_window_start = [59,

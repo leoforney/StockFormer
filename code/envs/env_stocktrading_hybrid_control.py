@@ -279,8 +279,7 @@ class StockTradingEnv(gym.Env):
                 plt.savefig(
                     self.figure_path+"account_value_{}_{}_{}.png".format(
                         self.mode, self.model_name, self.episode
-                    ),
-                    index=False,
+                    )
                 )
                 plt.close()
 
@@ -506,11 +505,7 @@ class StockTradingEnv(gym.Env):
 
         if path is not None:
             state_dict = torch.load(path, map_location='cuda:0')
-            new_state_dict = OrderedDict()
-            for k, v in state_dict.items(): 
-                name = k[7:] 
-                new_state_dict[name] = v
-            model.load_state_dict(new_state_dict)
+            model.load_state_dict(state_dict)
             print("Successfully load prediction mode...", path)
         
         return model

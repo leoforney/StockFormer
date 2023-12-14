@@ -1,6 +1,8 @@
 START_DATE = "2010-01-01"
 END_DATE = "2022-05-07"
 
+import os
+
 INF = 1100
 
 ## stockstats technical indicator column names
@@ -127,9 +129,11 @@ USE_CSI_300_TICKET = ['600519.SS',
  '002050.SZ',
  '002179.SZ']
 
+USE_N100_TICKET = os.listdir('/opt/project/data/N100')
+USE_N100_TICKET = [file.replace('.csv', '') for file in USE_N100_TICKET]
 
-use_ticker_dict = {'CSI':USE_CSI_300_TICKET, 'TEST': USE_CSI_300_TICKET[:5]}
+use_ticker_dict = {'CSI':USE_CSI_300_TICKET, 'N100': USE_N100_TICKET, 'TEST': USE_CSI_300_TICKET[:5]}
 
 CSI_date = ['20110419', '20181228', '20180102', '20201231',  '20190402', '20211231']
 
-date_dict = {'CSI': CSI_date, 'TEST': CSI_date}
+date_dict = {'CSI': CSI_date, 'N100': CSI_date, 'TEST': CSI_date}

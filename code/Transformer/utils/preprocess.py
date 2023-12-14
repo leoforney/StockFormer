@@ -117,6 +117,7 @@ class FeatureEngineer:
         df = df.sort_values(["date", "tic"], ignore_index=True)
         df.index = df.date.factorize()[0]
         merged_closes = df.pivot_table(index="date", columns="tic", values="close")
+        merged_closes = merged_closes.dropna(thresh=merged_closes.shape[1] - 10)
         merged_closes = merged_closes.dropna(axis=1)
         tics = merged_closes.columns
         df = df[df.tic.isin(tics)]
@@ -156,9 +157,7 @@ class FeatureEngineer:
                     ].to_list()
                     for s in range(1,3):
                         temp_indicator[indicator+'_'+str(s)] = temp_indicator[indicator].shift(s)
-                    indicator_df = indicator_df.append(
-                        temp_indicator, ignore_index=True
-                    )
+                    indicator_df = pd.concat([indicator_df, temp_indicator], ignore_index=True)
                 except Exception as e:
                     print(e)
             df = df.merge(
@@ -192,9 +191,7 @@ class FeatureEngineer:
                     temp_indicator["date"] = df[df.tic == unique_ticker[i]][
                         "date"
                     ].to_list()
-                    indicator_df = indicator_df.append(
-                        temp_indicator, ignore_index=True
-                    )
+                    indicator_df = pd.concat([indicator_df, temp_indicator], ignore_index=True)
                 except Exception as e:
                     print(e)
             df = df.merge(
