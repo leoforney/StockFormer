@@ -2,8 +2,8 @@ import datetime
 
 import numpy as np
 import pandas as pd
-from Transformer.utils.yahoodownloader import YahooDownloader
 from Transformer import config
+from Transformer.utils.yahoodownloader import YahooDownloader
 from stockstats import StockDataFrame as Sdf
 
 
@@ -57,12 +57,12 @@ class FeatureEngineer:
     """
 
     def __init__(
-        self,
-        use_technical_indicator=True,
-        tech_indicator_list=config.TECHNICAL_INDICATORS_LIST,
-        use_vix=False,
-        use_turbulence=False,
-        user_defined_feature=False,
+            self,
+            use_technical_indicator=True,
+            tech_indicator_list=config.TECHNICAL_INDICATORS_LIST,
+            use_vix=False,
+            use_turbulence=False,
+            user_defined_feature=False,
     ):
         self.use_technical_indicator = use_technical_indicator
         self.tech_indicator_list = tech_indicator_list
@@ -144,13 +144,14 @@ class FeatureEngineer:
                     temp_indicator["date"] = df[df.tic == unique_ticker[i]][
                         "date"
                     ].to_list()
-                    for s in range(1,3):
-                        temp_indicator[indicator+'_'+str(s)] = temp_indicator[indicator].shift(s)
+                    for s in range(1, 3):
+                        temp_indicator[indicator + '_' + str(s)] = temp_indicator[indicator].shift(s)
                     indicator_df = pd.concat([indicator_df, temp_indicator], ignore_index=True)
                 except Exception as e:
                     print(e)
             df = df.merge(
-                indicator_df[["tic", "date", indicator, indicator+'_'+str(1), indicator+'_'+str(2)]], on=["tic", "date"], how="left"
+                indicator_df[["tic", "date", indicator, indicator + '_' + str(1), indicator + '_' + str(2)]],
+                on=["tic", "date"], how="left"
             )
         df = df.sort_values(by=["date", "tic"])
         return df
@@ -251,11 +252,11 @@ class FeatureEngineer:
             hist_price = df_price_pivot[
                 (df_price_pivot.index < unique_date[i])
                 & (df_price_pivot.index >= unique_date[i - 252])
-            ]
+                ]
             # Drop tickers which has number missing values more than the "oldest" ticker
             filtered_hist_price = hist_price.iloc[
-                hist_price.isna().sum().min() :
-            ].dropna(axis=1)
+                                  hist_price.isna().sum().min():
+                                  ].dropna(axis=1)
 
             cov_temp = filtered_hist_price.cov()
             current_temp = current_price[[x for x in filtered_hist_price]] - np.mean(

@@ -1,23 +1,18 @@
+from collections import OrderedDict
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
-import gym
+import gymnasium
 import numpy as np
 import torch as th
-from torch.nn import functional as F
-from collections import OrderedDict
-
-
+from MySAC.SAC.off_policy_algorithm import OffPolicyAlgorithm
+from MySAC.SAC.policy_transformer import policy_transformer_stock_atten2 as policy_transformer_attn2
+from Transformer.models.transformer import Transformer_base as Transformer
 from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.noise import ActionNoise
-from MySAC.SAC.off_policy_algorithm import OffPolicyAlgorithm
 from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
 from stable_baselines3.common.utils import polyak_update
 from stable_baselines3.sac.policies import SACPolicy
-
-from Transformer.models.transformer import Transformer_base as Transformer
-from Transformer.utils.metrics import ranking_loss
-from MySAC.SAC.policy_transformer import policy_transformer_stock_atten2 as policy_transformer_attn2
-import pdb
+from torch.nn import functional as F
 
 
 class SAC(OffPolicyAlgorithm):
@@ -80,47 +75,47 @@ class SAC(OffPolicyAlgorithm):
     """
 
     def __init__(
-        self,
-        policy: Union[str, Type[SACPolicy]],
-        env: Union[GymEnv, str],
-        learning_rate: Union[float, Schedule] = 3e-4,
-        buffer_size: int = 1_000_000,  # 1e6
-        learning_starts: int = 100,
-        batch_size: int = 256,
-        tau: float = 0.005,
-        gamma: float = 0.99,
-        train_freq: Union[int, Tuple[int, str]] = 1,
-        gradient_steps: int = 1,
-        action_noise: Optional[ActionNoise] = None,
-        replay_buffer_class: Optional[ReplayBuffer] = None,
-        replay_buffer_kwargs: Optional[Dict[str, Any]] = None,
-        optimize_memory_usage: bool = False,
-        ent_coef: Union[str, float] = "auto",
-        target_update_interval: int = 1,
-        target_entropy: Union[str, float] = "auto",
-        use_sde: bool = False,
-        sde_sample_freq: int = -1,
-        use_sde_at_warmup: bool = False,
-        tensorboard_log: Optional[str] = None,
-        create_eval_env: bool = False,
-        policy_kwargs: Optional[Dict[str, Any]] = None,
-        verbose: int = 0,
-        seed: Optional[int] = None,
-        device: Union[th.device, str] = "auto",
-        _init_setup_model: bool = True,
-        enc_in=96,
-        dec_in=96,
-        c_out_construction=96,
-        d_model=128,
-        n_heads=4,
-        e_layers=2,
-        d_layers=1,
-        d_ff=256,
-        dropout=0.05,
-        transformer_device = 'cuda:0',
-        transformer_path = None,
-        critic_alpha=1,
-        actor_alpha=0,
+            self,
+            policy: Union[str, Type[SACPolicy]],
+            env: Union[GymEnv, str],
+            learning_rate: Union[float, Schedule] = 3e-4,
+            buffer_size: int = 1_000_000,  # 1e6
+            learning_starts: int = 100,
+            batch_size: int = 256,
+            tau: float = 0.005,
+            gamma: float = 0.99,
+            train_freq: Union[int, Tuple[int, str]] = 1,
+            gradient_steps: int = 1,
+            action_noise: Optional[ActionNoise] = None,
+            replay_buffer_class: Optional[ReplayBuffer] = None,
+            replay_buffer_kwargs: Optional[Dict[str, Any]] = None,
+            optimize_memory_usage: bool = False,
+            ent_coef: Union[str, float] = "auto",
+            target_update_interval: int = 1,
+            target_entropy: Union[str, float] = "auto",
+            use_sde: bool = False,
+            sde_sample_freq: int = -1,
+            use_sde_at_warmup: bool = False,
+            tensorboard_log: Optional[str] = None,
+            create_eval_env: bool = False,
+            policy_kwargs: Optional[Dict[str, Any]] = None,
+            verbose: int = 0,
+            seed: Optional[int] = None,
+            device: Union[th.device, str] = "auto",
+            _init_setup_model: bool = True,
+            enc_in=96,
+            dec_in=96,
+            c_out_construction=96,
+            d_model=128,
+            n_heads=4,
+            e_layers=2,
+            d_layers=1,
+            d_ff=256,
+            dropout=0.05,
+            transformer_device='cuda:0',
+            transformer_path=None,
+            critic_alpha=1,
+            actor_alpha=0,
     ):
 
         super(SAC, self).__init__(
@@ -148,7 +143,7 @@ class SAC(OffPolicyAlgorithm):
             sde_sample_freq=sde_sample_freq,
             use_sde_at_warmup=use_sde_at_warmup,
             optimize_memory_usage=optimize_memory_usage,
-            supported_action_spaces=(gym.spaces.Box),
+            supported_action_spaces=(gymnasium.spaces.Box),
         )
 
         self.target_entropy = target_entropy
@@ -162,10 +157,10 @@ class SAC(OffPolicyAlgorithm):
         if _init_setup_model:
             self._setup_model()
 
-        self.state_transformer = Transformer(enc_in=enc_in, dec_in=dec_in, c_out=c_out_construction, 
+        self.state_transformer = Transformer(enc_in=enc_in, dec_in=dec_in, c_out=c_out_construction,
                                              n_heads=n_heads, e_layers=e_layers, d_layers=d_layers,
                                              d_model=d_model, d_ff=d_ff, dropout=dropout).to(transformer_device)
-        
+
         if transformer_path is not None:
             state_dict = th.load(transformer_path, map_location=transformer_device)
             new_state_dict = OrderedDict()
@@ -173,19 +168,19 @@ class SAC(OffPolicyAlgorithm):
             print("Successfully load pretrained model...", transformer_path)
         else:
             print("Successfully initialize transformer model...")
-        
+
         self.transformer_device = transformer_device
         self.transformer_optim = th.optim.Adam(self.state_transformer.parameters(), lr=learning_rate)
         self.transformer_criteria = th.nn.MSELoss()
-        
+
         self.critic_alpha = critic_alpha
         self.actor_alpha = actor_alpha
 
+        self.actor_transformer = policy_transformer_attn2(d_model=d_model, dropout=dropout, lr=learning_rate).to(
+            transformer_device)
+        self.critic_transformer = policy_transformer_attn2(d_model=d_model, dropout=dropout, lr=learning_rate).to(
+            transformer_device)
 
-        self.actor_transformer = policy_transformer_attn2(d_model=d_model, dropout=dropout, lr=learning_rate).to(transformer_device)
-        self.critic_transformer = policy_transformer_attn2(d_model=d_model, dropout=dropout, lr=learning_rate).to(transformer_device)
-        
-        
         self.in_feat = enc_in
 
     def _setup_model(self) -> None:
@@ -230,7 +225,8 @@ class SAC(OffPolicyAlgorithm):
         self.policy.set_training_mode(True)
         self.state_transformer.train()
         # Update optimizers learning rate
-        optimizers = [self.actor.optimizer, self.critic.optimizer, self.actor_transformer.optimizer, self.critic_transformer.optimizer, self.transformer_optim] 
+        optimizers = [self.actor.optimizer, self.critic.optimizer, self.actor_transformer.optimizer,
+                      self.critic_transformer.optimizer, self.transformer_optim]
         if self.ent_coef_optimizer is not None:
             optimizers += [self.ent_coef_optimizer]
 
@@ -251,8 +247,10 @@ class SAC(OffPolicyAlgorithm):
 
             # Action by the current actor for the sampled state
             # pdb.set_trace()
-            state, temporal_feature_short, temporal_feature_long, holding_stocks, loss_s = self._state_transfer(replay_data.observations) # [bs, num_nodes, cov_list\technial\temporal_feature(60day)\label\holding]
-            actions_pi, log_prob = self.actor.action_log_prob(self.actor_transformer(state.detach(), temporal_feature_short, temporal_feature_long, holding_stocks))
+            state, temporal_feature_short, temporal_feature_long, holding_stocks, loss_s = self._state_transfer(
+                replay_data.observations)  # [bs, num_nodes, cov_list\technial\temporal_feature(60day)\label\holding]
+            actions_pi, log_prob = self.actor.action_log_prob(
+                self.actor_transformer(state.detach(), temporal_feature_short, temporal_feature_long, holding_stocks))
             log_prob = log_prob.reshape(-1, 1)
 
             ent_coef_loss = None
@@ -276,14 +274,19 @@ class SAC(OffPolicyAlgorithm):
                 self.ent_coef_optimizer.step()
 
             # pdb.set_trace()
-            next_state, next_temporal_feature_short, next_temporal_feature_long, next_holding_stocks, loss_ns = self._state_transfer(replay_data.next_observations)
+            next_state, next_temporal_feature_short, next_temporal_feature_long, next_holding_stocks, loss_ns = self._state_transfer(
+                replay_data.next_observations)
             with th.no_grad():
                 # Select action according to policy
-                next_actions, next_log_prob = self.actor.action_log_prob(self.actor_transformer(next_state, next_temporal_feature_short, next_temporal_feature_long, next_holding_stocks))
-                
+                next_actions, next_log_prob = self.actor.action_log_prob(
+                    self.actor_transformer(next_state, next_temporal_feature_short, next_temporal_feature_long,
+                                           next_holding_stocks))
+
                 # next_actions, next_log_prob = self.actor.action_log_prob(replay_data.next_observations)
                 # Compute the next Q values: min over all critics targets
-                next_q_values = th.cat(self.critic_target(self.critic_transformer(next_state, next_temporal_feature_short, next_temporal_feature_long, next_holding_stocks), next_actions), dim=1)
+                next_q_values = th.cat(self.critic_target(
+                    self.critic_transformer(next_state, next_temporal_feature_short, next_temporal_feature_long,
+                                            next_holding_stocks), next_actions), dim=1)
                 next_q_values, _ = th.min(next_q_values, dim=1, keepdim=True)
                 # add entropy term
                 next_q_values = next_q_values - ent_coef * next_log_prob.reshape(-1, 1)
@@ -292,7 +295,9 @@ class SAC(OffPolicyAlgorithm):
 
             # Get current Q-values estimates for each critic network
             # using action from the replay buffer
-            current_q_values = self.critic(self.critic_transformer(state, temporal_feature_short, temporal_feature_long, holding_stocks), replay_data.actions)
+            current_q_values = self.critic(
+                self.critic_transformer(state, temporal_feature_short, temporal_feature_long, holding_stocks),
+                replay_data.actions)
 
             # Compute critic loss
             # pdb.set_trace() # get critic loss item value
@@ -314,21 +319,24 @@ class SAC(OffPolicyAlgorithm):
             # Alternative: actor_loss = th.mean(log_prob - qf1_pi)
             # Mean over all critic networks
             alpha = 0
-            q_values_pi = th.cat(self.critic.forward(self.critic_transformer(state, temporal_feature_short, temporal_feature_long, holding_stocks).detach(), actions_pi), dim=1)
-            
+            q_values_pi = th.cat(self.critic.forward(
+                self.critic_transformer(state, temporal_feature_short, temporal_feature_long, holding_stocks).detach(),
+                actions_pi), dim=1)
+
             min_qf_pi, _ = th.min(q_values_pi, dim=1, keepdim=True)
-            actor_loss = (ent_coef * log_prob - min_qf_pi).mean() + alpha * th.abs(th.mean(th.sum(replay_data.actions, dim=-1))-1)
+            actor_loss = (ent_coef * log_prob - min_qf_pi).mean() + alpha * th.abs(
+                th.mean(th.sum(replay_data.actions, dim=-1)) - 1)
             actor_losses.append(actor_loss.item())
 
             # Optimize the actor
             self.actor.optimizer.zero_grad()
             self.actor_transformer.optimizer.zero_grad()
             actor_loss.backward()
-            
+
             self.actor.optimizer.step()
             self.actor_transformer.optimizer.step()
 
-            transformerloss = (loss_s + loss_ns)/2
+            transformerloss = (loss_s + loss_ns) / 2
             transformer_losses.append(transformerloss.item())
 
             # Update target networks
@@ -346,16 +354,16 @@ class SAC(OffPolicyAlgorithm):
             self.logger.record("train/ent_coef_loss", np.mean(ent_coef_losses))
 
     def learn(
-        self,
-        total_timesteps: int,
-        callback: MaybeCallback = None,
-        log_interval: int = 4,
-        eval_env: Optional[GymEnv] = None,
-        eval_freq: int = -1,
-        n_eval_episodes: int = 5,
-        tb_log_name: str = "SAC",
-        eval_log_path: Optional[str] = None,
-        reset_num_timesteps: bool = True,
+            self,
+            total_timesteps: int,
+            callback: MaybeCallback = None,
+            log_interval: int = 4,
+            eval_env: Optional[GymEnv] = None,
+            eval_freq: int = -1,
+            n_eval_episodes: int = 5,
+            tb_log_name: str = "SAC",
+            eval_log_path: Optional[str] = None,
+            reset_num_timesteps: bool = True,
     ) -> OffPolicyAlgorithm:
 
         return super(SAC, self).learn(
@@ -371,17 +379,17 @@ class SAC(OffPolicyAlgorithm):
         )
 
     def predict(
-        self,
-        test_obs: np.ndarray,
-        deterministic: bool = False,
-        state: np.ndarray = None,
+            self,
+            test_obs: np.ndarray,
+            deterministic: bool = False,
+            state: np.ndarray = None,
     ) -> OffPolicyAlgorithm:
 
         flag = 0
         if len(test_obs.shape) == 2:
             test_obs = np.expand_dims(test_obs, axis=0)
             flag = 1
-        
+
         self.state_transformer.eval()
         with th.no_grad():
             obs = th.FloatTensor(test_obs).to(self.transformer_device)
@@ -404,31 +412,30 @@ class SAC(OffPolicyAlgorithm):
         else:
             saved_pytorch_variables = ["ent_coef_tensor"]
         return state_dicts, saved_pytorch_variables
-    
+
     def _state_transfer_predict(self, x):
 
-        batch_enc1 = x[:, :, :self.in_feat] # [cov+technical_list]
+        batch_enc1 = x[:, :, :self.in_feat]  # [cov+technical_list]
 
         enc_out, _, output = self.state_transformer(batch_enc1, batch_enc1)
 
         hidden_channel = enc_out.shape[-1]
 
-        temporal_feature_short = x[:, :, self.in_feat: hidden_channel+self.in_feat]
-        temporal_feature_long = x[:, :, hidden_channel+self.in_feat: hidden_channel*2+self.in_feat]
+        temporal_feature_short = x[:, :, self.in_feat: hidden_channel + self.in_feat]
+        temporal_feature_long = x[:, :, hidden_channel + self.in_feat: hidden_channel * 2 + self.in_feat]
         temporal_features = th.cat((temporal_feature_short, temporal_feature_long), dim=1)
 
         holding = x[:, :, -1:]
 
         return enc_out, temporal_feature_short, temporal_feature_long, holding
 
-
     def _state_transfer(self, x):
         bs, stock_num = x.shape[0], x.shape[1]
 
-        batch_enc1 = x[:, :, :self.in_feat] # [cov+technical_list]
+        batch_enc1 = x[:, :, :self.in_feat]  # [cov+technical_list]
         mask = th.ones_like(batch_enc1)
         rand_indices = th.rand(bs, stock_num).argsort(dim=-1)
-        mask_indices = rand_indices[:, :int(stock_num/2)]
+        mask_indices = rand_indices[:, :int(stock_num / 2)]
         batch_range = th.arange(bs)[:, None]
         mask[batch_range, mask_indices, stock_num:] = 0
         enc_inp = mask * batch_enc1
@@ -439,11 +446,11 @@ class SAC(OffPolicyAlgorithm):
 
         pred = output[batch_range, mask_indices, stock_num:]
         true = batch_enc1[batch_range, mask_indices, stock_num:]
-        
+
         loss = self.transformer_criteria(pred, true)
 
-        temporal_feature_short = x[:, :, self.in_feat: hidden_channel+self.in_feat]
-        temporal_feature_long = x[:, :, hidden_channel+self.in_feat: hidden_channel*2+self.in_feat]
+        temporal_feature_short = x[:, :, self.in_feat: hidden_channel + self.in_feat]
+        temporal_feature_long = x[:, :, hidden_channel + self.in_feat: hidden_channel * 2 + self.in_feat]
 
         temporal_features = th.cat((temporal_feature_short, temporal_feature_long), dim=1)
 

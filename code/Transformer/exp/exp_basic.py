@@ -1,6 +1,7 @@
 import os
+
 import torch
-import numpy as np
+
 
 class Exp_Basic(object):
     def __init__(self, args):
@@ -11,7 +12,7 @@ class Exp_Basic(object):
     def _build_model(self):
         raise NotImplementedError
         return None
-    
+
     def _acquire_device(self):
         if self.args.use_gpu:
             os.environ["CUDA_VISIBLE_DEVICES"] = str(
@@ -34,4 +35,3 @@ class Exp_Basic(object):
 
     def test(self):
         pass
-    

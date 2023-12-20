@@ -16,6 +16,7 @@ class FeedForward(nn.Module):
         x = self.dropout(self.conv2(x).transpose(-1, 1))
         return x
 
+
 class MultiheadFeedForward(nn.Module):
     def __init__(self, d_model, n_heads, ff_dim, dropout, activation):
         super().__init__()
@@ -25,15 +26,17 @@ class MultiheadFeedForward(nn.Module):
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
 
-        self.mhfw = nn.ModuleList([FeedForward(d_model=self.head_dim, ff_dim=ff_dim, dropout=dropout, activation=activation) for i in range(self.n_heads)])
+        self.mhfw = nn.ModuleList(
+            [FeedForward(d_model=self.head_dim, ff_dim=ff_dim, dropout=dropout, activation=activation) for i in
+             range(self.n_heads)])
 
-    def forward(self, x): # [bs, seq_len, d_model]
+    def forward(self, x):  # [bs, seq_len, d_model]
         bs = x.shape[0]
-        input = x.reshape(bs, -1, self.n_heads, self.head_dim) # [bs, seq_len, n_heads, head_dim]
+        input = x.reshape(bs, -1, self.n_heads, self.head_dim)  # [bs, seq_len, n_heads, head_dim]
         outputs = []
         for i in range(self.n_heads):
-            outputs.append(self.mhfw[i](input[:, :, i, :])) # [bs, seq_len, head_dim]
-        outputs = torch.stack(outputs, dim=-2).reshape(bs, -1, self.d_model) # [bs, seq_len, n_heads, head_dim]
+            outputs.append(self.mhfw[i](input[:, :, i, :]))  # [bs, seq_len, head_dim]
+        outputs = torch.stack(outputs, dim=-2).reshape(bs, -1, self.d_model)  # [bs, seq_len, n_heads, head_dim]
         return outputs
 
 
@@ -42,7 +45,8 @@ class EncoderLayer(nn.Module):
         super(EncoderLayer, self).__init__()
         d_ff = d_ff or 4 * d_model
         self.attention = attention
-        self.mhfw = MultiheadFeedForward(d_model=d_model, n_heads=n_heads, ff_dim=d_ff, dropout=dropout, activation=activation)
+        self.mhfw = MultiheadFeedForward(d_model=d_model, n_heads=n_heads, ff_dim=d_ff, dropout=dropout,
+                                         activation=activation)
         self.norm1 = nn.LayerNorm(d_model)
         self.norm2 = nn.LayerNorm(d_model)
         self.dropout = nn.Dropout(dropout)
@@ -95,7 +99,8 @@ class DecoderLayer(nn.Module):
         d_ff = d_ff or 4 * d_model
         self.self_attention = self_attention
         self.cross_attention = cross_attention
-        self.mhfw = MultiheadFeedForward(d_model=d_model, n_heads=n_heads, ff_dim=d_ff, dropout=dropout, activation=activation)
+        self.mhfw = MultiheadFeedForward(d_model=d_model, n_heads=n_heads, ff_dim=d_ff, dropout=dropout,
+                                         activation=activation)
         self.norm1 = nn.LayerNorm(d_model)
         self.norm2 = nn.LayerNorm(d_model)
         self.norm3 = nn.LayerNorm(d_model)

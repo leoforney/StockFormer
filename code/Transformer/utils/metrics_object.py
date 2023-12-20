@@ -4,7 +4,6 @@ import numpy as np
 import torch
 import torch.distributed as dist
 import torch.nn.functional as F
-
 import utils
 from utils.metrics import mirr_top1, mirr_top_k, rank_ic, mae, mse
 
@@ -21,7 +20,7 @@ class MetricMeter:
             return
         world_size = torch.distributed.get_world_size()
         buf = [[] for _ in range(world_size)]
-        for chunk in utils.chunks(self.data, 200):  
+        for chunk in utils.chunks(self.data, 200):
             t = torch.tensor(chunk, dtype=torch.float64, device='cuda')
             dist.barrier()
             output_tensors = [t.clone() for _ in range(world_size)]
@@ -78,6 +77,7 @@ class MIRRTop1(MetricMeter):
     def __str__(self):
         return f"{self.mean():.6f}"
 
+
 class MAE(MetricMeter):
     def __init__(self, postfix=''):
         if postfix != '':
@@ -86,6 +86,7 @@ class MAE(MetricMeter):
 
     def __str__(self):
         return f"{self.mean():.6f}"
+
 
 class MSE(MetricMeter):
     def __init__(self, postfix=''):

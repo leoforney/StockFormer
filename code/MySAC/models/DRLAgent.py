@@ -1,22 +1,16 @@
 # DRL models from Stable Baselines 3
 
-import time
+import os
 
 import numpy as np
-import pandas as pd
 from MySAC import config
 from MySAC.SAC.MAE_SAC import SAC as SAC_MAE
-import os
 from stable_baselines3.common.callbacks import BaseCallback, EvalCallback, CallbackList
 from stable_baselines3.common.noise import (
     NormalActionNoise,
     OrnsteinUhlenbeckActionNoise,
 )
-from stable_baselines3.common.vec_env import DummyVecEnv
-from stable_baselines3.common.results_plotter import load_results, ts2xy, plot_results
-
-
-
+from stable_baselines3.common.results_plotter import load_results, ts2xy
 
 MODELS = {"maesac": SAC_MAE}
 
@@ -27,8 +21,9 @@ NOISE = {
     "ornstein_uhlenbeck": OrnsteinUhlenbeckActionNoise,
 }
 
+
 class CheckCallback(BaseCallback):
-    def __init__(self, check_freq:int, verbose: int=1):
+    def __init__(self, check_freq: int, verbose: int = 1):
         super(CheckCallback, self).__init__(verbose)
         self.check_freq = check_freq
 
@@ -36,14 +31,15 @@ class CheckCallback(BaseCallback):
         if self.n_calls % self.check_freq == 0:
             print(self.n_calls)
 
+
 class oursTrainingRewardCallback(BaseCallback):
-    def __init__(self, check_freq:int, log_dir: str, verbose: int=1):
+    def __init__(self, check_freq: int, log_dir: str, verbose: int = 1):
         super(oursTrainingRewardCallback, self).__init__(verbose)
         self.check_freq = check_freq
         self.log_dir = log_dir
         self.save_path = os.path.join(log_dir, 'best_model')
         self.best_mean_reward = -np.inf
-    
+
     def _init_callback(self) -> None:
         # Create folder if needed
         if self.save_path is not None:
@@ -52,24 +48,25 @@ class oursTrainingRewardCallback(BaseCallback):
     def _on_step(self) -> bool:
         if self.n_calls % self.check_freq == 0:
 
-          # Retrieve training reward
-          x, y = ts2xy(load_results(self.log_dir), 'timesteps')
-          if len(x) > 0:
-              # Mean training reward over the last 10 episodes
-              mean_reward = np.mean(y[-50:])
-              if self.verbose > 0:
-                print(f"Num timesteps: {self.num_timesteps}")
-                print(f"Best mean reward: {self.best_mean_reward:.2f} - Last mean reward per episode: {mean_reward:.2f}")
+            # Retrieve training reward
+            x, y = ts2xy(load_results(self.log_dir), 'timesteps')
+            if len(x) > 0:
+                # Mean training reward over the last 10 episodes
+                mean_reward = np.mean(y[-50:])
+                if self.verbose > 0:
+                    print(f"Num timesteps: {self.num_timesteps}")
+                    print(
+                        f"Best mean reward: {self.best_mean_reward:.2f} - Last mean reward per episode: {mean_reward:.2f}")
 
-              # New best model, you could save the agent here
-              if mean_reward > self.best_mean_reward:
-                  self.best_mean_reward = mean_reward
-                  # Example for saving best model
-                  if self.verbose > 0:
-                    print(f"Saving new best model to {self.save_path}")
-                  self.model.save(self.save_path+'model.zip')
+                # New best model, you could save the agent here
+                if mean_reward > self.best_mean_reward:
+                    self.best_mean_reward = mean_reward
+                    # Example for saving best model
+                    if self.verbose > 0:
+                        print(f"Saving new best model to {self.save_path}")
+                    self.model.save(self.save_path + 'model.zip')
 
-        return True      
+        return True
 
 
 class TensorboardCallback(BaseCallback):
@@ -111,14 +108,14 @@ class DRLAgent:
         self.env = env
 
     def get_model(
-        self,
-        model_name,
-        policy="MlpPolicy",
-        policy_kwargs=None,
-        model_kwargs=None,
-        verbose=1,
-        seed=None,
-        tensorboard_log=None,
+            self,
+            model_name,
+            policy="MlpPolicy",
+            policy_kwargs=None,
+            model_kwargs=None,
+            verbose=1,
+            seed=None,
+            tensorboard_log=None,
     ):
         if model_name not in MODELS:
             raise NotImplementedError("NotImplementedError")
@@ -143,15 +140,17 @@ class DRLAgent:
         )
         return model
 
-    def train_model(self, model, tb_log_name, check_freq, ck_dir, log_dir, eval_env, total_timesteps=5000, verbose=1, deterministic=True):
-        eval_callback = EvalCallback(eval_env, best_model_save_path=ck_dir, log_path=log_dir, eval_freq=check_freq, n_eval_episodes=1, deterministic=deterministic, render=False)
-        tb_callback=TensorboardCallback(verbose=verbose)
+    def train_model(self, model, tb_log_name, check_freq, ck_dir, log_dir, eval_env, total_timesteps=5000, verbose=1,
+                    deterministic=True):
+        eval_callback = EvalCallback(eval_env, best_model_save_path=ck_dir, log_path=log_dir, eval_freq=check_freq,
+                                     n_eval_episodes=1, deterministic=deterministic, render=False)
+        tb_callback = TensorboardCallback(verbose=verbose)
         callback = CallbackList([eval_callback, tb_callback])
 
         model = model.learn(
             total_timesteps=total_timesteps,
             tb_log_name=tb_log_name,
-            callback = callback
+            callback=callback
         )
         return model
 
@@ -173,7 +172,7 @@ class DRLAgent:
                 actions_memory = test_env.env_method(method_name="save_action_memory")
                 print("hit end!")
                 break
-        return account_memory[0], actions_memory[0]#, universal_results[0]
+        return account_memory[0], actions_memory[0]  # , universal_results[0]
 
     @staticmethod
     def DRL_prediction_load_from_file(model_name, environment, cwd, deterministic=True):

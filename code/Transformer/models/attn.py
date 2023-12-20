@@ -1,14 +1,13 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
+import sys
+from math import sqrt
 
 import numpy as np
-
-from math import sqrt
-import sys
+import torch
+import torch.nn as nn
 
 sys.path.append('StockFormer/Transformer/')
-from utils.masking import TriangularCausalMask, ProbMask
+from utils.masking import TriangularCausalMask
+
 
 class FullAttention(nn.Module):
     def __init__(self, mask_flag=True, factor=5, scale=None, attention_dropout=0.1, output_attention=False):
@@ -73,6 +72,7 @@ class AttentionLayer(nn.Module):
         out = out.view(B, L, -1)
 
         return self.out_projection(out), attn
+
 
 class MultiHeadAttentionLayer(nn.Module):
     def __init__(self, attention, d_model, n_heads, d_keys=None,

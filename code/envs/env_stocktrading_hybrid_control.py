@@ -1,59 +1,56 @@
-from distutils.command import config
+import gymnasium
+import matplotlib
 import numpy as np
 import pandas as pd
-from gym.utils import seeding
-import gym
-from gym import spaces
-import matplotlib
+from gymnasium import spaces
+from gymnasium.utils import seeding
+
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from stable_baselines3.common.vec_env import DummyVecEnv
+
 from Transformer.models.transformer import Transformer_base as PredictionModel
 
 import torch
-from collections import OrderedDict
 
 import os
-import datetime
-import pdb
-import pickle as pkl
 
 
-class StockTradingEnv(gym.Env):
+class StockTradingEnv(gymnasium.Env):
     """A stock trading environment for OpenAI gym"""
 
     metadata = {"render.modes": ["human"]}
 
     def __init__(
-        self,
-        df,
-        stock_dim,
-        hmax,
-        initial_amount,
-        transaction_cost_pct,
-        reward_scaling,
-        state_space,
-        action_space,
-        tech_indicator_list,
-        temporal_feature_list,
-        additional_list,
-        time_window_start, # should be a list
-        short_prediction_model_path = None,
-        long_prediction_model_path = None,
-        step_len=1000,
-        temporal_len=60,
-        figure_path='results/',
-        logs_path='results/',
-        csv_path = 'results/',
-        mode="train",
-        hidden_channel=4,
-        make_plots=True,
-        print_verbosity=1,
-        initial=True,
-        model_name="",
-        iteration="",
-        device='cuda:0',
-        print_additional_flag=0,
+            self,
+            df,
+            stock_dim,
+            hmax,
+            initial_amount,
+            transaction_cost_pct,
+            reward_scaling,
+            state_space,
+            action_space,
+            tech_indicator_list,
+            temporal_feature_list,
+            additional_list,
+            time_window_start,  # should be a list
+            short_prediction_model_path=None,
+            long_prediction_model_path=None,
+            step_len=1000,
+            temporal_len=60,
+            figure_path='results/',
+            logs_path='results/',
+            csv_path='results/',
+            mode="train",
+            hidden_channel=4,
+            make_plots=True,
+            print_verbosity=1,
+            initial=True,
+            model_name="",
+            iteration="",
+            device='cuda:0',
+            print_additional_flag=0,
     ):
         # start time
         self.start_day = time_window_start[0]
@@ -63,13 +60,13 @@ class StockTradingEnv(gym.Env):
         self.step_len = step_len
 
         # help file
-        self.log_name = logs_path+mode+'.txt'
+        self.log_name = logs_path + mode + '.txt'
         self.figure_path = figure_path
         self.csv_path = csv_path
         os.makedirs(logs_path, exist_ok=True)
         os.makedirs(figure_path, exist_ok=True)
         os.makedirs(csv_path, exist_ok=True)
-    
+
         self.df = df
         self.stock_dim = stock_dim
         self.initial_amount = initial_amount
@@ -85,10 +82,11 @@ class StockTradingEnv(gym.Env):
         self.temporal_len = temporal_len
         self.hidden_channel = hidden_channel
 
-
         self.action_space = spaces.Box(low=-1, high=1, shape=(self.action_dim,))
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_space, self.state_space+len(self.tech_indicator_list)+2*self.hidden_channel+1)) # cov matrix list + technical list + temporal feature * 60 + prediction labels + holding amount
-        self.hidden_state_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_space, self.hidden_channel+1))
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.state_space, self.state_space + len(
+            self.tech_indicator_list) + 2 * self.hidden_channel + 1))  # cov matrix list + technical list + temporal feature * 60 + prediction labels + holding amount
+        self.hidden_state_space = spaces.Box(low=-np.inf, high=np.inf,
+                                             shape=(self.state_space, self.hidden_channel + 1))
 
         self.data = self.df.loc[self.day, :]
         self.tic = self.df.tic.unique()
@@ -131,7 +129,6 @@ class StockTradingEnv(gym.Env):
         # self.reset()
         self._seed()
 
-
     def _sell_stock(self, index, action):
         def _do_sell_normal():
             if self.info[index + 1] > 0:
@@ -143,16 +140,16 @@ class StockTradingEnv(gym.Env):
                         abs(action), self.info[index + self.stock_dim + 1]
                     )
                     sell_amount = (
-                        self.info[index + 1]
-                        * sell_num_shares
-                        * (1 - self.transaction_cost_pct)
+                            self.info[index + 1]
+                            * sell_num_shares
+                            * (1 - self.transaction_cost_pct)
                     )
                     # update balance
                     self.info[0] += sell_amount
 
                     self.info[index + self.stock_dim + 1] -= sell_num_shares
                     self.cost += (
-                        self.info[index + 1] * sell_num_shares * self.transaction_cost_pct
+                            self.info[index + 1] * sell_num_shares * self.transaction_cost_pct
                     )
                     self.trades += 1
                 else:
@@ -176,7 +173,7 @@ class StockTradingEnv(gym.Env):
                 # update balance
                 buy_num_shares = min(available_amount, action)
                 buy_amount = (
-                    self.info[index + 1] * buy_num_shares * (1 + self.transaction_cost_pct)
+                        self.info[index + 1] * buy_num_shares * (1 + self.transaction_cost_pct)
                 )
                 self.info[0] -= buy_amount
 
@@ -193,10 +190,9 @@ class StockTradingEnv(gym.Env):
 
         return buy_num_shares
 
-
     def _make_plot(self):
         plt.plot(self.asset_memory, "r")
-        plt.savefig(self.figure_path+self.mode+"_account_value_trade_{}.png".format(self.episode))
+        plt.savefig(self.figure_path + self.mode + "_account_value_trade_{}.png".format(self.episode))
         plt.close()
 
     def step(self, actions):
@@ -209,13 +205,13 @@ class StockTradingEnv(gym.Env):
             if self.make_plots:
                 self._make_plot()
             self.end_total_asset = self.info[0] + sum(
-                np.array(self.info[1 : (self.stock_dim + 1)])
-                * np.array(self.info[(self.stock_dim + 1) : (self.stock_dim * 2 + 1)])
+                np.array(self.info[1: (self.stock_dim + 1)])
+                * np.array(self.info[(self.stock_dim + 1): (self.stock_dim * 2 + 1)])
             )
             df_total_value = pd.DataFrame(self.asset_memory)
             tot_reward = (
-                self.end_total_asset
-                - self.initial_amount
+                    self.end_total_asset
+                    - self.initial_amount
             )
             df_total_value.columns = ["account_value"]
             df_total_value["date"] = self.date_memory
@@ -224,15 +220,18 @@ class StockTradingEnv(gym.Env):
             )
             if df_total_value["daily_return"].std() != 0:
                 sharpe = (
-                    (252 ** 0.5)
-                    * df_total_value["daily_return"].mean()
-                    / df_total_value["daily_return"].std()
+                        (252 ** 0.5)
+                        * df_total_value["daily_return"].mean()
+                        / df_total_value["daily_return"].std()
                 )
 
-            self.reward = self.reward + self.reward_scaling * ((self.end_total_asset - self.initial_amount)/(self.initial_amount * 1.0))
+            self.reward = self.reward + self.reward_scaling * (
+                        (self.end_total_asset - self.initial_amount) / (self.initial_amount * 1.0))
 
             f1 = open(self.log_name, 'a')
-            f1.write(str(self.end_total_asset)+'\t'+str(self.reward)+ '\t' + str(np.sum(self.rewards_memory)) + '\t' + str(sharpe) + '\t' + str((self.end_total_asset-self.initial_amount)/self.initial_amount) + '\n')
+            f1.write(str(self.end_total_asset) + '\t' + str(self.reward) + '\t' + str(
+                np.sum(self.rewards_memory)) + '\t' + str(sharpe) + '\t' + str(
+                (self.end_total_asset - self.initial_amount) / self.initial_amount) + '\n')
             f1.close()
 
             df_rewards = pd.DataFrame(self.rewards_memory)
@@ -253,31 +252,31 @@ class StockTradingEnv(gym.Env):
             if (self.model_name != "") and (self.mode != ""):
                 df_actions = self.save_action_memory()
                 df_actions.to_csv(
-                    self.csv_path+"actions_{}_{}_{}.csv".format(
+                    self.csv_path + "actions_{}_{}_{}.csv".format(
                         self.mode, self.model_name, self.episode
                     )
                 )
                 df_stock_amount = self.save_holding_amount()
                 df_stock_amount.to_csv(
-                    self.csv_path+"amount_{}_{}_{}.csv".format(
+                    self.csv_path + "amount_{}_{}_{}.csv".format(
                         self.mode, self.model_name, self.episode
                     )
                 )
                 df_total_value.to_csv(
-                    self.csv_path+"account_value_{}_{}_{}.csv".format(
+                    self.csv_path + "account_value_{}_{}_{}.csv".format(
                         self.mode, self.model_name, self.episode
                     ),
                     index=False,
                 )
                 df_rewards.to_csv(
-                    self.csv_path+"account_rewards_{}_{}_{}.csv".format(
+                    self.csv_path + "account_rewards_{}_{}_{}.csv".format(
                         self.mode, self.model_name, self.episode
                     ),
                     index=False,
                 )
                 plt.plot(self.asset_memory, "r")
                 plt.savefig(
-                    self.figure_path+"account_value_{}_{}_{}.png".format(
+                    self.figure_path + "account_value_{}_{}_{}.png".format(
                         self.mode, self.model_name, self.episode
                     )
                 )
@@ -293,8 +292,8 @@ class StockTradingEnv(gym.Env):
                 int
             )
             begin_total_asset = self.info[0] + sum(
-                np.array(self.info[1 : (self.stock_dim + 1)])
-                * np.array(self.info[(self.stock_dim + 1) : (self.stock_dim * 2 + 1)])
+                np.array(self.info[1: (self.stock_dim + 1)])
+                * np.array(self.info[(self.stock_dim + 1): (self.stock_dim * 2 + 1)])
             )
             # print("begin_total_asset:{}".format(begin_total_asset))
 
@@ -321,15 +320,15 @@ class StockTradingEnv(gym.Env):
             self.data = self.df.loc[self.day, :]
             self.info = self._update_info()
             self.end_total_asset = self.info[0] + sum(
-                np.array(self.info[1 : (self.stock_dim + 1)])
-                * np.array(self.info[(self.stock_dim + 1) : (self.stock_dim * 2 + 1)])
+                np.array(self.info[1: (self.stock_dim + 1)])
+                * np.array(self.info[(self.stock_dim + 1): (self.stock_dim * 2 + 1)])
             )
 
             self.state = self._update_state()
 
             self.asset_memory.append(self.end_total_asset)
             self.date_memory.append(self._get_date())
-            self.reward = ((self.end_total_asset - begin_total_asset)/(begin_total_asset*1.0))
+            self.reward = ((self.end_total_asset - begin_total_asset) / (begin_total_asset * 1.0))
             self.rewards_memory.append(self.reward)
             self.amount_memory.append(self.info[-self.stock_dim:])
             # self.reward = self.reward * self.reward_scaling
@@ -350,7 +349,7 @@ class StockTradingEnv(gym.Env):
 
         self.short_hidden_feature = []
         self.long_hidden_feature = []
-        
+
         self.info = self._initiate_info()
         self.state = self._initial_state()
 
@@ -362,7 +361,7 @@ class StockTradingEnv(gym.Env):
         # self.iteration=self.iteration
         self.rewards_memory = []
         self.actions_memory = []
-        self.amount_memory = []#[self.info[-self.stock_dim:]]
+        self.amount_memory = []  # [self.info[-self.stock_dim:]]
         self.date_memory = [self._get_date()]
 
         self.episode += 1
@@ -375,24 +374,25 @@ class StockTradingEnv(gym.Env):
     def _initiate_info(self):
         # if len(self.df.tic.unique()) > 1:
         info = (
-                    [self.initial_amount]
-                    + self.data.price.values.tolist()
-                    + [0] * self.stock_dim
-            )
+                [self.initial_amount]
+                + self.data.price.values.tolist()
+                + [0] * self.stock_dim
+        )
         return info
 
     def _initial_state(self):
-        covs = np.array(self.data['cov_list'].values[0]) # (stock_dim, stock_dim)
-        technical_indicators = np.array(self.data[self.tech_indicator_list].values.tolist()) # (stock_dim, len(technical_list))
+        covs = np.array(self.data['cov_list'].values[0])  # (stock_dim, stock_dim)
+        technical_indicators = np.array(
+            self.data[self.tech_indicator_list].values.tolist())  # (stock_dim, len(technical_list))
 
-        temporal_feature_data = self.df.loc[self.day-self.temporal_len+1:self.day, :]
-        temporal_feature = np.array(temporal_feature_data[self.temporal_feature_list].values.tolist()).reshape(self.temporal_len, self.stock_dim, -1).transpose(1,0,2) # (num_nodes=bs, days, feature_list_len)
+        temporal_feature_data = self.df.loc[self.day - self.temporal_len + 1:self.day, :]
+        temporal_feature = np.array(temporal_feature_data[self.temporal_feature_list].values.tolist()).reshape(
+            self.temporal_len, self.stock_dim, -1).transpose(1, 0, 2)  # (num_nodes=bs, days, feature_list_len)
         enc_feature = torch.FloatTensor(temporal_feature).to(self.device)
-        dec_feature = torch.FloatTensor(temporal_feature[:,-1:,:]).to(self.device)
+        dec_feature = torch.FloatTensor(temporal_feature[:, -1:, :]).to(self.device)
 
         _, hidden_short, _ = self.short_prediction_model(enc_feature, dec_feature)
         _, hidden_long, _ = self.long_prediction_model(enc_feature, dec_feature)
-
 
         hidden_np1 = hidden_short.detach().cpu().numpy().reshape(self.stock_dim, -1)
         hidden_np2 = hidden_long.detach().cpu().numpy().reshape(self.stock_dim, -1)
@@ -401,43 +401,45 @@ class StockTradingEnv(gym.Env):
         self.long_hidden_feature.append(hidden_np2)
 
         # pdb.set_trace()
-        holding_amount = np.zeros((self.stock_dim,1), dtype=int)
+        holding_amount = np.zeros((self.stock_dim, 1), dtype=int)
         state = np.concatenate((covs, technical_indicators, hidden_np1, hidden_np2, holding_amount), axis=-1)
         # print("Initial: ",state.shape)
         return state
 
-
     def _update_info(self):
-            # for multiple stock
+        # for multiple stock
         info = (
                 [self.info[0]]
                 + self.data.price.values.tolist()
-                + list(self.info[(self.stock_dim + 1) : (self.stock_dim * 2 + 1)])
-            )
+                + list(self.info[(self.stock_dim + 1): (self.stock_dim * 2 + 1)])
+        )
         return info
 
     def _update_state(self):
-        covs = np.array(self.data['cov_list'].values[0]) # (stock_dim, stock_dim)
-        technical_indicators = np.array(self.data[self.tech_indicator_list].values.tolist()) # (stock_dim, len(technical_list))
+        covs = np.array(self.data['cov_list'].values[0])  # (stock_dim, stock_dim)
+        technical_indicators = np.array(
+            self.data[self.tech_indicator_list].values.tolist())  # (stock_dim, len(technical_list))
 
-        temporal_feature_data = self.df.loc[self.day-self.temporal_len+1:self.day, :]
-        temporal_feature = np.array(temporal_feature_data[self.temporal_feature_list].values.tolist()).reshape(self.temporal_len, self.stock_dim, -1).transpose(1,0,2) # (num_nodes, temporal_day, feature_list_len)
+        temporal_feature_data = self.df.loc[self.day - self.temporal_len + 1:self.day, :]
+        temporal_feature = np.array(temporal_feature_data[self.temporal_feature_list].values.tolist()).reshape(
+            self.temporal_len, self.stock_dim, -1).transpose(1, 0, 2)  # (num_nodes, temporal_day, feature_list_len)
 
         enc_feature = torch.FloatTensor(temporal_feature).to(self.device)
-        dec_feature = torch.FloatTensor(temporal_feature[:,-1:,:]).to(self.device)
+        dec_feature = torch.FloatTensor(temporal_feature[:, -1:, :]).to(self.device)
 
         _, hidden_short, _ = self.short_prediction_model(enc_feature, dec_feature)
         _, hidden_long, _ = self.long_prediction_model(enc_feature, dec_feature)
-
 
         hidden_np1 = hidden_short.detach().cpu().numpy().reshape(self.stock_dim, -1)
         hidden_np2 = hidden_long.detach().cpu().numpy().reshape(self.stock_dim, -1)
 
         self.short_hidden_feature.append(hidden_np1)
         self.long_hidden_feature.append(hidden_np2)
-        
-        holding_amount = np.array(self.info[-self.stock_dim : ]) # (stock_dim, 1)
-        holding_amount_norm = ((holding_amount * np.array(self.info[1: 1+self.stock_dim]))/self.end_total_asset).reshape(self.stock_dim, 1)
+
+        holding_amount = np.array(self.info[-self.stock_dim:])  # (stock_dim, 1)
+        holding_amount_norm = (
+                    (holding_amount * np.array(self.info[1: 1 + self.stock_dim])) / self.end_total_asset).reshape(
+            self.stock_dim, 1)
 
         state = np.concatenate((covs, technical_indicators, hidden_np1, hidden_np2, holding_amount_norm), axis=-1)
         # print("Update: ",state.shape)
@@ -459,7 +461,7 @@ class StockTradingEnv(gym.Env):
         return df_account_value
 
     def save_additional_info(self):
-        temp_dict = {"short_hidden_feature":self.short_hidden_feature, "long_hidden_feature": self.long_hidden_feature}
+        temp_dict = {"short_hidden_feature": self.short_hidden_feature, "long_hidden_feature": self.long_hidden_feature}
         return temp_dict
 
     def save_holding_amount(self):
@@ -471,7 +473,6 @@ class StockTradingEnv(gym.Env):
         df_amount = pd.DataFrame(amount_list)
         df_amount.columns = self.data.tic.values
         return df_amount
-
 
     def save_action_memory(self):
         if len(self.df.tic.unique()) > 1:
@@ -507,5 +508,5 @@ class StockTradingEnv(gym.Env):
             state_dict = torch.load(path, map_location='cuda:0')
             model.load_state_dict(state_dict)
             print("Successfully load prediction mode...", path)
-        
+
         return model

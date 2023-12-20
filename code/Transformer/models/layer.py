@@ -1,12 +1,10 @@
 import copy
-import torch
-from torch import nn
 import sys
 
-sys.path.append('StockFormer/Transformer')
-import config
+import torch
+from torch import nn
 
-import pdb
+sys.path.append('StockFormer/Transformer')
 
 
 def clone_module(module, n):
@@ -31,7 +29,7 @@ class MultiHeadAttention(nn.Module):
         bs = query.shape[0]
 
         Q = self.fc_q(query)  # (bs, q_len, d_model)
-        K = self.fc_k(key)    # (bs, k_len, d_model)
+        K = self.fc_k(key)  # (bs, k_len, d_model)
         V = self.fc_v(value)  # (bs, v_len, d_model)
 
         Q = Q.view(bs, -1, self.n_heads, self.head_dim).permute(0, 2, 1, 3)  # (bs, n_heads, src_len, head_dim)
@@ -42,11 +40,11 @@ class MultiHeadAttention(nn.Module):
         energy = self.dropout(energy)
         if mask is not None:
             energy = energy.masked_fill(mask == 0, -1e10)
-        attention = torch.softmax(energy, dim=-1)    # (bs, n_heads, seq_len, seq_len)
+        attention = torch.softmax(energy, dim=-1)  # (bs, n_heads, seq_len, seq_len)
         x = torch.matmul(attention, V)  # (bs, n_heads, seq_len, head_dim)
-        x = x.permute(0, 2, 1, 3).contiguous()    # (bs, seq_len, n_heads, head_dim)
-        x = x.view(bs, -1, self.d_model)   # (bs, seq_len, d_model)
-        x = self.fc_o(x)     # x: (bs, seq_len, d_model)
+        x = x.permute(0, 2, 1, 3).contiguous()  # (bs, seq_len, n_heads, head_dim)
+        x = x.view(bs, -1, self.d_model)  # (bs, seq_len, d_model)
+        x = self.fc_o(x)  # x: (bs, seq_len, d_model)
         return x
 
 
@@ -65,6 +63,7 @@ class FeedForward(nn.Module):
         x = self.conv2(x).transpose(-1, 1)
         return x
 
+
 class MultiheadFeedForward(nn.Module):
     def __init__(self, d_model, n_heads, ff_dim, dropout=0.1):
         super().__init__()
@@ -74,15 +73,15 @@ class MultiheadFeedForward(nn.Module):
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
 
-        self.mhfw = nn.ModuleList([FeedForward(d_model=self.head_dim, ff_dim=ff_dim, dropout=dropout) for i in range(self.n_heads)])
+        self.mhfw = nn.ModuleList(
+            [FeedForward(d_model=self.head_dim, ff_dim=ff_dim, dropout=dropout) for i in range(self.n_heads)])
 
-    def forward(self, x): # [bs, seq_len, d_model]
+    def forward(self, x):  # [bs, seq_len, d_model]
         # pdb.set_trace()
         bs = x.shape[0]
-        input = x.reshape(bs, -1, self.n_heads, self.head_dim) # [bs, seq_len, n_heads, head_dim]
+        input = x.reshape(bs, -1, self.n_heads, self.head_dim)  # [bs, seq_len, n_heads, head_dim]
         outputs = []
         for i in range(self.n_heads):
-            outputs.append(self.mhfw[i](input[:, :, i, :])) # [bs, seq_len, head_dim]
-        outputs = torch.cat(outputs, dim=-2).reshape(bs, -1, self.d_model) # [bs, seq_len, n_heads, head_dim]
+            outputs.append(self.mhfw[i](input[:, :, i, :]))  # [bs, seq_len, head_dim]
+        outputs = torch.cat(outputs, dim=-2).reshape(bs, -1, self.d_model)  # [bs, seq_len, n_heads, head_dim]
         return outputs
-
