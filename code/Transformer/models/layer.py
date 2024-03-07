@@ -1,10 +1,7 @@
 import copy
-import sys
 
 import torch
 from torch import nn
-
-sys.path.append('StockFormer/Transformer')
 
 
 def clone_module(module, n):

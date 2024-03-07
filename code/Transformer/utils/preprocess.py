@@ -1,10 +1,11 @@
 import datetime
 
-import config
 import numpy as np
 import pandas as pd
+from Transformer import config
 from stockstats import StockDataFrame as Sdf
-from utils.yahoodownloader import YahooDownloader
+
+from yahoodownloader import YahooDownloader
 
 
 def load_dataset(*, file_name: str) -> pd.DataFrame:

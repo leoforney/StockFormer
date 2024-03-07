@@ -11,10 +11,12 @@ Gao, [Yunbo Wang](https://wyb15.github.io/)<sup>†</sup>, [Xiaokang Yang](https
 ### Installation
 
 ```
-git clone https://github.com/gsyyysg/StockFormer.git
+git clone https://github.com/leoforney/StockFormer.git
 cd StockFormer
 pip install -r requirements.txt
 ```
+
+Alternatively there's a `Dockerfile` that you can run if you have NVIDIA container toolkit installed
 
 ### Dataset
 
@@ -24,7 +26,7 @@ Downloaded from [YahooFinance](https://pypi.org/project/yfinance/)
 
 ### Data
 
-dir: '*data/CSI/*'
+dir: '*data/N100/*'
 
 ### Code
 
@@ -56,7 +58,7 @@ sh train_pred_short.sh
 4) Select the best model of three state inference modules from '*code/Transformer/checkpoints/*' according to their
    performance on validation set and add them to '*code/Transformer/pretrained/*'
 
-**OR** directly use the model which have been pretrained in advance by us (dir:'*code/Transformer/pretrained/csi/* ')
+**OR** directly use the model which have been pretrained in advance by us (dir:'*code/Transformer/pretrained/n100/* ')
 
 #### 2nd stage：Policy Learning
 

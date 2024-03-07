@@ -2,12 +2,12 @@ import datetime
 import os
 import random
 
-import config
 import numpy as np
 import pandas as pd
+from Transformer import config
+from Transformer.utils.preprocess import FeatureEngineer
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
-from utils.preprocess import FeatureEngineer
 
 
 class Stock_Data():

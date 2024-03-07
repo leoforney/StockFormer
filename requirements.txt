@@ -3,7 +3,6 @@ pandas
 scikit-learn
 statsmodels==0.13.2
 stockstats==0.3.2
-tensorboardX
 torch
 torchvision
 tqdm==4.64.0

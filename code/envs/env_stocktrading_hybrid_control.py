@@ -226,7 +226,7 @@ class StockTradingEnv(gymnasium.Env):
                 )
 
             self.reward = self.reward + self.reward_scaling * (
-                        (self.end_total_asset - self.initial_amount) / (self.initial_amount * 1.0))
+                    (self.end_total_asset - self.initial_amount) / (self.initial_amount * 1.0))
 
             f1 = open(self.log_name, 'a')
             f1.write(str(self.end_total_asset) + '\t' + str(self.reward) + '\t' + str(
@@ -438,7 +438,7 @@ class StockTradingEnv(gymnasium.Env):
 
         holding_amount = np.array(self.info[-self.stock_dim:])  # (stock_dim, 1)
         holding_amount_norm = (
-                    (holding_amount * np.array(self.info[1: 1 + self.stock_dim])) / self.end_total_asset).reshape(
+                (holding_amount * np.array(self.info[1: 1 + self.stock_dim])) / self.end_total_asset).reshape(
             self.stock_dim, 1)
 
         state = np.concatenate((covs, technical_indicators, hidden_np1, hidden_np2, holding_amount_norm), axis=-1)

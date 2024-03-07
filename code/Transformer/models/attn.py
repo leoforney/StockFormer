@@ -1,12 +1,10 @@
-import sys
 from math import sqrt
 
 import numpy as np
 import torch
 import torch.nn as nn
 
-sys.path.append('StockFormer/Transformer/')
-from utils.masking import TriangularCausalMask
+from ..utils.masking import TriangularCausalMask
 
 
 class FullAttention(nn.Module):
