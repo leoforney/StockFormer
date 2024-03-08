@@ -14,4 +14,4 @@ int_date==0.1.8
 shortuuid
 matplotlib
 tensorboard
-stable-baselines3[extra]
+stable-baselines3[extra]==1.8.0
